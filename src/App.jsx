@@ -324,7 +324,14 @@ export default function App() {
             managed.words.forEach((word) => {
               if (!word?.id) return;
               if (word.active === false) byId.delete(word.id);
-              else byId.set(word.id, word);
+              else {
+                // 관리 단어에는 example 등 정적 전용 필드가 없어 통째로 교체하면 예문이 사라진다.
+                // 빈 값이 아닌 관리 필드만 정적 단어 위에 덮어쓴다.
+                const managedFields = Object.fromEntries(
+                  Object.entries(word).filter(([, value]) => value !== '' && value !== null && value !== undefined),
+                );
+                byId.set(word.id, { ...(byId.get(word.id) ?? {}), ...managedFields });
+              }
             });
             nextWords = [...byId.values()];
           }
