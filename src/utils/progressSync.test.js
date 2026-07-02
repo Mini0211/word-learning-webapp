@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isServerProgressNewer, mergeProgressByUpdatedAt, serverProgressForLanguage } from './progressSync.js';
+import { compactWordStats, isServerProgressNewer, mergeProgressByUpdatedAt, serverProgressForLanguage } from './progressSync.js';
 
 describe('progressSync', () => {
   it('keeps only server-safe progress fields for the selected language', () => {
@@ -23,6 +23,20 @@ describe('progressSync', () => {
       updatedAt: '2026-05-24T00:00:00.000Z',
     }));
     expect(progress.unexpected).toBeUndefined();
+  });
+
+  it('strips heavy word-stat fields before syncing to the server', () => {
+    const progress = serverProgressForLanguage({
+      wordStats: {
+        apple: { seen: 2, correct: 1, wrong: 1, streak: -1, lastResult: 'wrong', lastAnswer: '아주 긴 사용자 답안'.repeat(4), lastAiReason: 'AI 판정 사유 장문', updatedAt: '2026-07-02T00:00:00.000Z' },
+      },
+      updatedAt: '2026-07-02T00:00:00.000Z',
+    }, 'en');
+
+    expect(progress.wordStats.apple).toEqual({
+      seen: 2, correct: 1, wrong: 1, streak: -1, lastResult: 'wrong', updatedAt: '2026-07-02T00:00:00.000Z',
+    });
+    expect(compactWordStats(null)).toEqual({});
   });
 
   it('prefers server progress only when server updatedAt is newer', () => {

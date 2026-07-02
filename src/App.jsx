@@ -391,9 +391,16 @@ export default function App() {
         method: 'PUT',
         token: auth.token,
         body: JSON.stringify({ language: activeLanguage, progress: serverProgressForLanguage(progress, activeLanguage) }),
+      }).then(() => {
+        setSyncStatus((prev) => (prev && prev.includes('진도') ? '' : prev));
       }).catch((err) => {
         if (err.status === 401) setAuth(null);
-        else console.warn('progress save failed', err.message);
+        else {
+          console.warn('progress save failed', err.message);
+          setSyncStatus(err.message === 'progress_too_large'
+            ? '학습 기록이 너무 커서 서버에 진도를 저장하지 못했습니다.'
+            : '서버에 진도를 저장하지 못했습니다. 잠시 후 자동으로 다시 시도합니다.');
+        }
       });
     }, 1200);
     return () => window.clearTimeout(timeout);
