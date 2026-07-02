@@ -15,20 +15,6 @@ async function mockAdminApi(page) {
         active: true,
       },
     ],
-    aiReviews: [
-      {
-        id: 11,
-        wordId: 'en-beginner-apple',
-        word: 'apple',
-        normalizedAnswer: '과일사과',
-        canonicalAnswer: '사과',
-        verdict: 'correct',
-        confidence: 0.92,
-        source: 'gemini',
-        status: 'pending',
-        createdAt: '2026-05-24T00:00:00.000Z',
-      },
-    ],
   };
 
   await page.route(`${API_BASE}/auth/login`, async (route) => {
@@ -70,27 +56,6 @@ async function mockAdminApi(page) {
 
   await page.route(`${API_BASE}/admin/users`, async (route) => {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ users: [] }) });
-  });
-
-  await page.route(`${API_BASE}/admin/ai-answer-reviews**`, async (route) => {
-    const request = route.request();
-    if (request.method() === 'GET') {
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ reviews: state.aiReviews }) });
-      return;
-    }
-    await route.fallback();
-  });
-
-  await page.route(`${API_BASE}/admin/ai-answer-reviews/*`, async (route) => {
-    const request = route.request();
-    const id = Number(request.url().split('/').pop());
-    if (request.method() === 'PATCH') {
-      const body = request.postDataJSON();
-      state.aiReviews = state.aiReviews.map((review) => (review.id === id ? { ...review, status: body.status } : review));
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ review: state.aiReviews.find((review) => review.id === id) }) });
-      return;
-    }
-    await route.fallback();
   });
 
   await page.route(`${API_BASE}/admin/words**`, async (route) => {
@@ -146,7 +111,7 @@ test('admin can add and deactivate words from the admin dashboard', async ({ pag
   await expect(page.getByText('단어를 비활성화했습니다.')).toBeVisible();
 });
 
-test('admin can approve AI accepted answers into the word answer list', async ({ page }) => {
+test('admin dashboard no longer shows the retired AI review queue', async ({ page }) => {
   await mockAdminApi(page);
 
   await page.goto('/');
@@ -154,13 +119,8 @@ test('admin can approve AI accepted answers into the word answer list', async ({
   await page.getByPlaceholder('비밀번호').fill('admin-password');
   await page.getByRole('button', { name: '로그인하고 시작하기' }).click();
 
-  await expect(page.getByRole('heading', { name: 'AI 채점 검토 큐' })).toBeVisible();
-  await expect(page.getByText('과일사과')).toBeVisible();
-
-  await page.getByRole('button', { name: '정답 후보 등록' }).click();
-
-  await expect(page.getByText('AI 정답 후보를 등록했습니다.')).toBeVisible();
-  await expect(page.getByText('등록됨')).toBeVisible();
+  await expect(page.getByRole('heading', { name: '단어 학습 관리자' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AI 채점 검토 큐' })).toHaveCount(0);
 });
 
 test('regular users cannot see admin menu', async ({ page }) => {
